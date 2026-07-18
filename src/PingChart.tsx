@@ -1,4 +1,4 @@
-import type { PingResult } from './PingResult'
+import type { PingResult } from "./PingResult"
 
 const CHART_HEIGHT = 80
 
@@ -34,9 +34,9 @@ function PingChart({ results }: PingChartProps) {
         }
       `}</style>
       <div className="ping-chart">
-        {results.map((result, i) => (
+        {results.map((result) => (
           <div
-            key={i}
+            key={result._id}
             className="ping-bar"
             title={`status ${result.status} - ${result.duration.toFixed(0)}ms`}
             style={{

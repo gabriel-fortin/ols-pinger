@@ -1,11 +1,13 @@
-import { useState } from 'react'
-import type { PingResult } from './PingResult'
-import PingChart from './PingChart'
-import PingList from './PingList'
+import { useState } from "react"
+import { useMutation, useQuery } from "convex/react"
+import { api } from "../convex/_generated/api"
+import PingChart from "./PingChart"
+import PingList from "./PingList"
 
 function App() {
   const [url, setUrl] = useState('')
-  const [results, setResults] = useState<PingResult[]>([])
+  const results = useQuery(api.pings.list) ?? []
+  const addPing = useMutation(api.pings.add)
 
   const handleCall = async () => {
     const timestamp = Date.now()
@@ -18,7 +20,7 @@ function App() {
       status = 0
     }
     const duration = performance.now() - start
-    setResults((prev) => [...prev, { timestamp, status, duration }])
+    addPing({ url, timestamp, status, duration })
   }
 
   return (
