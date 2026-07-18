@@ -1,12 +1,17 @@
-import type { PingResult } from "./PingResult"
+import { useQuery } from "convex/react"
+import { api } from "../convex/_generated/api"
+import type { Id } from "../convex/_generated/dataModel"
 
 const CHART_HEIGHT = 80
 
 interface PingChartProps {
-  results: PingResult[]
+  selectedUrlId?: Id<"urls">
 }
 
-function PingChart({ results }: PingChartProps) {
+function PingChart({ selectedUrlId }: PingChartProps) {
+  if (!selectedUrlId) return null
+  
+  const results = useQuery(api.pings.list, { urlId: selectedUrlId }) ?? []
   const maxDuration = Math.max(...results.map((r) => r.duration), 1)
 
   return (

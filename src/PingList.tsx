@@ -1,10 +1,15 @@
-import type { PingResult } from "./PingResult"
+import { useQuery } from "convex/react"
+import { api } from "../convex/_generated/api"
+import type { Id } from "../convex/_generated/dataModel"
 
 interface PingListProps {
-  results: PingResult[]
+  selectedUrlId?: Id<"urls">
 }
 
-function PingList({ results }: PingListProps) {
+function PingList({ selectedUrlId }: PingListProps) {
+  if (!selectedUrlId) return null
+  
+  const results = useQuery(api.pings.list, { urlId: selectedUrlId }) ?? []
   return (
     <ul>
       {results.map((result) => (

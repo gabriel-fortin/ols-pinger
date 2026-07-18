@@ -9,7 +9,6 @@ function App() {
   const [selectedUrl, setSelectedUrl] = useState("")
   const urls = useQuery(api.urls.list) ?? []
   const selectedUrlId = urls.find((u) => u.url === selectedUrl)?._id
-  const results = useQuery(api.pings.list, selectedUrlId ? { urlId: selectedUrlId } : "skip") ?? []
   const addUrl = useMutation(api.urls.add)
   const addPing = useMutation(api.pings.add)
 
@@ -57,8 +56,8 @@ function App() {
       <button type="button" onClick={handleCall}>
         Call
       </button>
-      <PingChart results={results} />
-      <PingList results={results} />
+      <PingChart selectedUrlId={selectedUrlId} />
+      <PingList selectedUrlId={selectedUrlId} />
     </div>
   )
 }
