@@ -43,8 +43,8 @@ function PingChart({ results }: PingChartProps) {
               height: `${Math.max((result.duration / maxDuration) * CHART_HEIGHT, 2)}px`,
               background:
                 result.status >= 200 && result.status < 300
-                  ? 'var(--bar-good)'
-                  : 'var(--bar-critical)',
+                  ? "var(--bar-good)"
+                  : "var(--bar-critical)",
             }}
           />
         ))}

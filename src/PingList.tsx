@@ -9,7 +9,7 @@ function PingList({ results }: PingListProps) {
     <ul>
       {results.map((result) => (
         <li key={result._id}>
-          {new Date(result.timestamp).toLocaleTimeString()} - status:{' '}
+          {new Date(result.timestamp).toLocaleTimeString()} - status:{" "}
           {result.status} - {result.duration.toFixed(0)}ms
         </li>
       ))}

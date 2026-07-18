@@ -1,0 +1,21 @@
+import { mutation, query } from "./_generated/server"
+import { v } from "convex/values"
+
+export const list = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("urls").collect()
+  },
+})
+
+export const add = mutation({
+  args: { url: v.string() },
+  handler: async (ctx, { url }) => {
+    const existing = await ctx.db
+      .query("urls")
+      .withIndex("by_url", (q) => q.eq("url", url))
+      .first()
+    if (existing) return existing._id
+    return await ctx.db.insert("urls", { url })
+  },
+})
