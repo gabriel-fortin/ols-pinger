@@ -17,6 +17,10 @@ function PingChart({ selectedUrlId }: PingChartProps) {
   return (
     <div>
       <style>{`
+        .ping-chart-scroll {
+          overflow-x: auto;
+          max-width: 100%;
+        }
         .ping-chart {
           --bar-good: #0ca30c;
           --bar-critical: #d03b3b;
@@ -25,7 +29,9 @@ function PingChart({ selectedUrlId }: PingChartProps) {
           align-items: flex-end;
           gap: 2px;
           height: ${CHART_HEIGHT}px;
+          width: max-content;
           border-bottom: 1px solid var(--baseline);
+          margin-right: 1em;
         }
         @media (prefers-color-scheme: dark) {
           .ping-chart {
@@ -38,21 +44,23 @@ function PingChart({ selectedUrlId }: PingChartProps) {
           flex-shrink: 0;
         }
       `}</style>
-      <div className="ping-chart">
-        {results.map((result) => (
-          <div
-            key={result._id}
-            className="ping-bar"
-            title={`status ${result.status} - ${result.duration.toFixed(0)}ms`}
-            style={{
-              height: `${Math.max((result.duration / maxDuration) * CHART_HEIGHT, 2)}px`,
-              background:
-                result.status >= 200 && result.status < 300
-                  ? "var(--bar-good)"
-                  : "var(--bar-critical)",
-            }}
-          />
-        ))}
+      <div className="ping-chart-scroll">
+        <div className="ping-chart">
+          {results.map((result) => (
+            <div
+              key={result._id}
+              className="ping-bar"
+              title={`status ${result.status} - ${result.duration.toFixed(0)}ms`}
+              style={{
+                height: `${Math.max((result.duration / maxDuration) * CHART_HEIGHT, 2)}px`,
+                background:
+                  result.status >= 200 && result.status < 300
+                    ? "var(--bar-good)"
+                    : "var(--bar-critical)",
+              }}
+            />
+          ))}
+        </div>
       </div>
     </div>
   )
