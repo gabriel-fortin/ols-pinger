@@ -9,11 +9,27 @@ interface PingFormProps {
 
 function PingForm({ selectedUrlId, onSelectedUrlIdChange }: PingFormProps) {
   const urls = useQuery(api.urls.list) ?? []
-  const callUrl = useAction(api.pings.callUrl)
+  const scheduleExists = !!useQuery(
+    api.schedules.get,
+    selectedUrlId ? { urlId: selectedUrlId } : "skip",
+  )
+  const pingUrl = useAction(api.pings.pingUrl)
+  const scheduleUrlPinging = useAction(api.pings.schedulePing)
+  const unscheduleUrlPinging = useAction(api.pings.unschdulePing)
 
-  const handleCall = () => {
+  const handlePingOnce = () => {
     if (!selectedUrlId) return
-    callUrl({ urlId: selectedUrlId })
+    pingUrl({ urlId: selectedUrlId })
+  }
+
+  const handleSchedulePings = () => {
+    if (!selectedUrlId) return
+    scheduleUrlPinging({ urlId: selectedUrlId })
+  }
+
+  const handleUnschedulePings = () => {
+    if (!selectedUrlId) return
+    unscheduleUrlPinging({ urlId: selectedUrlId })
   }
 
   return (
@@ -35,9 +51,19 @@ function PingForm({ selectedUrlId, onSelectedUrlIdChange }: PingFormProps) {
           </option>
         ))}
       </select>
-      <button type="button" onClick={handleCall}>
-        Call
+      <button type="button" onClick={handlePingOnce}>
+        Ping once
       </button>
+      {!scheduleExists && (
+        <button type="button" onClick={handleSchedulePings}>
+          Schedule
+        </button>
+      )}
+      {scheduleExists && (
+        <button type="button" onClick={handleUnschedulePings}>
+          Unschedule
+        </button>
+      )}
     </>
   )
 }

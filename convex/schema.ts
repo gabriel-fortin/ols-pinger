@@ -13,5 +13,11 @@ export default defineSchema({
   urls: defineTable({
     url: v.string(),
   })
-    .index("by_url", ["url"])
+    .index("by_url", ["url"]),
+
+  schedules: defineTable({
+    urlId: v.id("urls"),
+    scheduledFunctionId: v.id("_scheduled_functions"),
+  })
+    .index("by_urlId", ["urlId"])
 })

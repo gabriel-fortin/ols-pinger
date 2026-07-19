@@ -1,6 +1,11 @@
-import { action, mutation, query } from "./_generated/server"
+import { action, internalAction, mutation, query } from "./_generated/server"
+import type { ActionCtx } from "./_generated/server"
 import { v } from "convex/values"
-import { api } from "./_generated/api"
+import { api, internal } from "./_generated/api"
+import type { Id } from "./_generated/dataModel"
+
+
+const SCHEDULE_INTERVAL_MS = 5000
 
 export const list = query({
   args: { urlId: v.optional(v.id("urls")) },
@@ -19,7 +24,7 @@ export const list = query({
   },
 })
 
-export const addResult = mutation({
+export const saveResult = mutation({
   args: {
     urlId: v.id("urls"),
     timestamp: v.number(),
@@ -31,24 +36,68 @@ export const addResult = mutation({
   },
 })
 
-export const callUrl = action({
+export const pingUrl = action({
   args: { urlId: v.id("urls") },
   handler: async (ctx, { urlId }) => {
-    const urlDoc = await ctx.runQuery(api.urls.get, { urlId })
-    if (!urlDoc) {
-      throw new Error("Ah, the URL was not found, can't make the call :(")
-    }
+    await makeAndSavePingCall(ctx, urlId)
+  },
+})
 
-    const timestamp = Date.now()
-    let status = 0
-    try {
-      const response = await fetch(urlDoc.url)
-      status = response.status
-    } catch {
-      status = 0
-    }
-    const duration = Date.now() - timestamp
+export const schedulePing = action({
+  args: { urlId: v.id("urls") },
+  handler: async (ctx, { urlId }) => {
+    await ctx.runAction(internal.pings.schedulePingInternal, { urlId, isInitial: true })
+  },
+})
 
-    await ctx.runMutation(api.pings.addResult, { urlId, timestamp, status, duration })
+export const unschdulePing = action({
+  args: { urlId: v.id("urls") },
+  handler: async (ctx, { urlId }) => {
+    await ctx.runMutation(internal.schedules.unregister, { urlId })
+
+    const existing = await ctx.runQuery(api.schedules.get, { urlId })
+    // a schedule could have ben removed manually from the dashboard
+    if (!existing) return
+
+    await ctx.scheduler.cancel(existing.scheduledFunctionId)
+  }
+})
+
+// ------ helpers
+
+async function makeAndSavePingCall(ctx: ActionCtx, urlId: Id<"urls">) {
+  const urlDoc = await ctx.runQuery(api.urls.get, { urlId })
+  if (!urlDoc) {
+    throw new Error("Ah, the URL was not found, can't make the call :(")
+  }
+
+  const timestamp = Date.now()
+  let status = 0
+  try {
+    const response = await fetch(urlDoc.url)
+    status = response.status
+  } catch {
+    status = 0
+  }
+  const duration = Date.now() - timestamp
+
+  await ctx.runMutation(api.pings.saveResult, { urlId, timestamp, status, duration })
+}
+
+export const schedulePingInternal = internalAction({
+  args: { urlId: v.id("urls"), isInitial: v.boolean() },
+  handler: async (ctx, { urlId, isInitial }) => {
+    if (!isInitial) {
+      const existing = await ctx.runQuery(api.schedules.get, { urlId })
+      // has it been cancelled?
+      if (!existing) return
+    }
+    await makeAndSavePingCall(ctx, urlId)
+    const scheduledFunctionId = await ctx.scheduler.runAfter(
+      SCHEDULE_INTERVAL_MS,
+      internal.pings.schedulePingInternal,
+      { urlId, isInitial: false },
+    )
+    await ctx.runMutation(internal.schedules.register, { urlId, scheduledFunctionId })
   },
 })
