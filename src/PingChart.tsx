@@ -50,7 +50,7 @@ function PingChart({ selectedUrlId }: PingChartProps) {
             <div
               key={result._id}
               className="ping-bar"
-              title={`status ${result.status} - ${result.duration.toFixed(0)}ms`}
+              title={`${new Date(result.timestamp).toLocaleString()} - status ${result.status} - ${result.duration.toFixed(0)}ms`}
               style={{
                 height: `${Math.max((result.duration / maxDuration) * CHART_HEIGHT, 2)}px`,
                 background:
