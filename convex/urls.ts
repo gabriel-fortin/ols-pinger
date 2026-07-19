@@ -8,6 +8,13 @@ export const list = query({
   },
 })
 
+export const get = query({
+  args: { urlId: v.id("urls") },
+  handler: async (ctx, { urlId }) => {
+    return await ctx.db.get(urlId)
+  },
+})
+
 export const add = mutation({
   args: { url: v.string() },
   handler: async (ctx, { url }) => {
