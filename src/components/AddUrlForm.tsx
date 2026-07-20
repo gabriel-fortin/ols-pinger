@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useMutation } from "convex/react"
-import { api } from "../convex/_generated/api"
+import { api } from "../../convex/_generated/api"
 
 function AddUrlForm() {
   const [url, setUrl] = useState("")
@@ -12,7 +12,7 @@ function AddUrlForm() {
   }
 
   return (
-    <>
+    <div>
       <input
         value={url}
         onChange={(e) => setUrl(e.target.value)}
@@ -21,7 +21,7 @@ function AddUrlForm() {
       <button type="button" onClick={handleAddUrl}>
         Add URL
       </button>
-    </>
+    </div>
   )
 }
 
