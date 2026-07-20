@@ -62,7 +62,7 @@ function ScheduleControls({ selectedUrlId }: ScheduleControlsProps) {
       )}
       {scheduleExists && (
         <button type="button" onClick={handleUnschedulePings}>
-          Unschedule (pinging every {scheduledInterval.label})
+          Unschedule (pinging every {scheduledInterval?.label ?? "?"})
         </button>
       )}
     </div>
