@@ -5,8 +5,6 @@ import { api, internal } from "./_generated/api"
 import type { Id } from "./_generated/dataModel"
 
 
-const SCHEDULE_INTERVAL_MS = 5000
-
 export const list = query({
   args: { urlId: v.optional(v.id("urls")) },
   handler: async (ctx, { urlId }) => {
@@ -44,9 +42,13 @@ export const pingUrl = action({
 })
 
 export const schedulePing = action({
-  args: { urlId: v.id("urls") },
-  handler: async (ctx, { urlId }) => {
-    await ctx.runAction(internal.pings.schedulePingInternal, { urlId, isInitial: true })
+  args: { urlId: v.id("urls"), intervalId: v.id("intervals") },
+  handler: async (ctx, { urlId, intervalId }) => {
+    await ctx.runAction(internal.pings.schedulePingInternal, {
+      urlId,
+      intervalId,
+      isInitial: true,
+    })
   },
 })
 
@@ -85,19 +87,29 @@ async function makeAndSavePingCall(ctx: ActionCtx, urlId: Id<"urls">) {
 }
 
 export const schedulePingInternal = internalAction({
-  args: { urlId: v.id("urls"), isInitial: v.boolean() },
-  handler: async (ctx, { urlId, isInitial }) => {
+  args: { urlId: v.id("urls"), intervalId: v.id("intervals"), isInitial: v.boolean() },
+  handler: async (ctx, { urlId, intervalId, isInitial }) => {
     if (!isInitial) {
       const existing = await ctx.runQuery(api.schedules.get, { urlId })
       // has it been cancelled?
       if (!existing) return
     }
+
+    const interval = await ctx.runQuery(api.intervals.get, { intervalId })
+    if (!interval) {
+      throw new Error("Ah, the interval was not found, can't schedule pings :(")
+    }
+
     await makeAndSavePingCall(ctx, urlId)
     const scheduledFunctionId = await ctx.scheduler.runAfter(
-      SCHEDULE_INTERVAL_MS,
+      interval.seconds * 1000,
       internal.pings.schedulePingInternal,
-      { urlId, isInitial: false },
+      { urlId, intervalId, isInitial: false },
     )
-    await ctx.runMutation(internal.schedules.register, { urlId, scheduledFunctionId })
+    await ctx.runMutation(internal.schedules.register, {
+      urlId,
+      intervalId,
+      scheduledFunctionId,
+    })
   },
 })

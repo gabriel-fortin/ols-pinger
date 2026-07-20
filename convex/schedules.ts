@@ -12,17 +12,21 @@ export const get = query({
 })
 
 export const register = internalMutation({
-  args: { urlId: v.id("urls"), scheduledFunctionId: v.id("_scheduled_functions") },
-  handler: async (ctx, { urlId, scheduledFunctionId }) => {
+  args: {
+    urlId: v.id("urls"),
+    intervalId: v.id("intervals"),
+    scheduledFunctionId: v.id("_scheduled_functions"),
+  },
+  handler: async (ctx, { urlId, intervalId, scheduledFunctionId }) => {
     const existing = await ctx.db
       .query("schedules")
       .withIndex("by_urlId", (q) => q.eq("urlId", urlId))
       .first()
 
     if (existing) {
-      await ctx.db.patch("schedules", existing._id, { urlId, scheduledFunctionId })
+      await ctx.db.patch("schedules", existing._id, { urlId, intervalId, scheduledFunctionId })
     } else {
-      await ctx.db.insert("schedules", { urlId, scheduledFunctionId })
+      await ctx.db.insert("schedules", { urlId, intervalId, scheduledFunctionId })
     }
   },
 })

@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useAction, useQuery } from "convex/react"
 import { api } from "../convex/_generated/api"
 import type { Id } from "../convex/_generated/dataModel"
@@ -9,10 +10,18 @@ interface PingFormProps {
 
 function PingForm({ selectedUrlId, onSelectedUrlIdChange }: PingFormProps) {
   const urls = useQuery(api.urls.list) ?? []
-  const scheduleExists = !!useQuery(
+  const intervals = useQuery(api.intervals.list) ?? []
+  const [selectedIntervalId, setSelectedIntervalId] = useState<
+    Id<"intervals"> | undefined
+  >(undefined)
+  const schedule = useQuery(
     api.schedules.get,
     selectedUrlId ? { urlId: selectedUrlId } : "skip",
   )
+  const scheduleExists = !!schedule
+  const scheduledInterval = schedule
+    ? intervals.find((i) => i._id === schedule.intervalId)
+    : undefined
   const pingUrl = useAction(api.pings.pingUrl)
   const scheduleUrlPinging = useAction(api.pings.schedulePing)
   const unscheduleUrlPinging = useAction(api.pings.unschdulePing)
@@ -23,8 +32,8 @@ function PingForm({ selectedUrlId, onSelectedUrlIdChange }: PingFormProps) {
   }
 
   const handleSchedulePings = () => {
-    if (!selectedUrlId) return
-    scheduleUrlPinging({ urlId: selectedUrlId })
+    if (!selectedUrlId || !selectedIntervalId) return
+    scheduleUrlPinging({ urlId: selectedUrlId, intervalId: selectedIntervalId })
   }
 
   const handleUnschedulePings = () => {
@@ -55,14 +64,40 @@ function PingForm({ selectedUrlId, onSelectedUrlIdChange }: PingFormProps) {
         Ping once
       </button>
       {!scheduleExists && (
-        <button type="button" onClick={handleSchedulePings}>
-          Schedule
-        </button>
+        <>
+          <select
+            value={selectedIntervalId ?? ""}
+            onChange={(e) =>
+              setSelectedIntervalId(
+                e.target.value ? (e.target.value as Id<"intervals">) : undefined,
+              )
+            }
+          >
+            <option value="" disabled>
+              Select an interval
+            </option>
+            {intervals.map((i) => (
+              <option key={i._id} value={i._id}>
+                {i.label}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={handleSchedulePings}
+            disabled={!selectedIntervalId}
+          >
+            Schedule
+          </button>
+        </>
       )}
       {scheduleExists && (
-        <button type="button" onClick={handleUnschedulePings}>
-          Unschedule
-        </button>
+        <>
+          <span>{scheduledInterval?.label ?? "Unknown interval"}</span>
+          <button type="button" onClick={handleUnschedulePings}>
+            Unschedule
+          </button>
+        </>
       )}
     </>
   )

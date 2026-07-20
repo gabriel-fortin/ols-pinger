@@ -15,8 +15,15 @@ export default defineSchema({
   })
     .index("by_url", ["url"]),
 
+  intervals: defineTable({
+    label: v.string(),
+    seconds: v.number(),
+  })
+    .index("by_seconds", ["seconds"]),
+
   schedules: defineTable({
     urlId: v.id("urls"),
+    intervalId: v.id("intervals"),
     scheduledFunctionId: v.id("_scheduled_functions"),
   })
     .index("by_urlId", ["urlId"])
