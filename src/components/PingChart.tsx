@@ -132,6 +132,7 @@ function PingChart({ selectedUrlId }: PingChartProps) {
           width: max-content;
           border-bottom: 1px solid var(--baseline);
           margin-right: 1em;
+          margin-bottom: 0.7em;
         }
         @media (prefers-color-scheme: dark) {
           .ping-chart {
