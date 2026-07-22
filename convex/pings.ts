@@ -3,6 +3,7 @@ import type { ActionCtx } from "./_generated/server"
 import { v } from "convex/values"
 import { api, internal } from "./_generated/api"
 import type { Id } from "./_generated/dataModel"
+import * as aggregations from "./aggregations"
 
 
 export const list = query({
@@ -30,7 +31,14 @@ export const saveResult = mutation({
     duration: v.number(),
   },
   handler: async (ctx, { urlId, timestamp, status, duration }) => {
-    await ctx.db.insert("pings", { urlId, timestamp, status, duration })
+    const id = await ctx.db.insert("pings", { urlId, timestamp, status, duration })
+    await aggregations.addPingToAggregates(ctx, {
+      id,
+      urlId,
+      timestamp,
+      status,
+      durationMs: duration,
+    })
   },
 })
 

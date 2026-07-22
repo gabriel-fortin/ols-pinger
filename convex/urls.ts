@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server"
 import { v } from "convex/values"
+import * as aggregations from "./aggregations"
 
 export const list = query({
   args: {},
@@ -23,6 +24,8 @@ export const add = mutation({
       .withIndex("by_url", (q) => q.eq("url", url))
       .first()
     if (existing) return existing._id
-    return await ctx.db.insert("urls", { url })
+    const urlId = await ctx.db.insert("urls", { url })
+    await aggregations.createAggregationSets(ctx, urlId)
+    return urlId
   },
 })
