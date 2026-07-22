@@ -26,5 +26,26 @@ export default defineSchema({
     intervalId: v.id("intervals"),
     scheduledFunctionId: v.id("_scheduled_functions"),
   })
-    .index("by_urlId", ["urlId"])
+    .index("by_urlId", ["urlId"]),
+
+  /* configuration for aggregated ping results */
+  aggregationSet: defineTable({
+    label: v.string(),
+    timeSliceSeconds: v.number(),
+    urlId: v.id("urls"),
+  })
+    .index("by_urlId", ["urlId"]),
+
+  /* aggregated ping results */
+  aggregationBuckets: defineTable({
+    set: v.id("aggregationSet"),
+    sliceStart: v.number(),
+    pingDurationMsMin: v.number(),
+    pingDurationMsMax: v.number(),
+    /* total of all durations in this bucket; the average is pingSum / pingCount */
+    pingDurationMsSum: v.number(),
+    pingCount: v.number(),
+  })
+    .index("by_set_and_sliceStart", ["set", "sliceStart"]),
+
 })
