@@ -45,6 +45,12 @@ export default defineSchema({
     /* total of all durations in this bucket; the average is pingSum / pingCount */
     pingDurationMsSum: v.number(),
     pingCount: v.number(),
+    status: v.union(
+      v.literal("success"),
+      v.literal("failure"),
+      v.literal("mix"),
+      v.literal("empty"),
+    ),
   })
     .index("by_set_and_sliceStart", ["set", "sliceStart"]),
 

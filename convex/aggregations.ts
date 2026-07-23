@@ -1,6 +1,22 @@
-import { mutation, type MutationCtx } from "./_generated/server"
+import { mutation, query, type MutationCtx } from "./_generated/server"
 import type { Id, DataModel } from "./_generated/dataModel"
 import { v } from "convex/values"
+
+
+type BucketStatus = "success" | "failure" | "mix" | "empty"
+
+/** Classify a single ping's HTTP status as success (2xx) or failure. */
+function pingOutcome(status: number): "success" | "failure" {
+  return status >= 200 && status < 300 ? "success" : "failure"
+}
+
+/** Fold a ping into a bucket's running status. */
+function nextBucketStatus(current: BucketStatus, ping: PingType): BucketStatus {
+  const outcome = pingOutcome(ping.status)
+  if (current === "empty") return outcome
+  if (current === outcome) return current
+  return "mix"
+}
 
 
 const TIME_SLICES_SECONDS = [5 * 60, 20 * 60, 60 * 60, 24 * 60 * 60]
@@ -69,6 +85,7 @@ export async function addPingToAggregate(ctx: MutationCtx, ping: PingType,
       pingDurationMsMax: Math.max(bucket.pingDurationMsMax, ping.durationMs),
       pingDurationMsSum: bucket.pingDurationMsSum + ping.durationMs,
       pingCount: bucket.pingCount + 1,
+      status: nextBucketStatus(bucket.status, ping),
     })
   } else {
     await ctx.db.insert("aggregationBuckets", {
@@ -78,6 +95,7 @@ export async function addPingToAggregate(ctx: MutationCtx, ping: PingType,
       pingDurationMsMax: ping.durationMs,
       pingDurationMsSum: ping.durationMs,
       pingCount: 1,
+      status: nextBucketStatus("empty", ping),
     })
   }
 }
@@ -135,4 +153,28 @@ export const reAggregatePings = mutation({
     }
 
   }
+})
+
+/** Aggregation sets for a URL, ordered from finest to coarsest time slice. */
+export const listSets = query({
+  args: { urlId: v.id("urls") },
+  handler: async (ctx, { urlId }) => {
+    const sets = await ctx.db
+      .query("aggregationSet")
+      .withIndex("by_urlId", (q) => q.eq("urlId", urlId))
+      .collect()
+    return sets.sort((a, b) => a.timeSliceSeconds - b.timeSliceSeconds)
+  },
+})
+
+/** Buckets for an aggregation set, ordered chronologically by slice start. */
+export const listBuckets = query({
+  args: { setId: v.id("aggregationSet") },
+  handler: async (ctx, { setId }) => {
+    const buckets = await ctx.db
+      .query("aggregationBuckets")
+      .withIndex("by_set_and_sliceStart", (q) => q.eq("set", setId))
+      .collect()
+    return buckets.sort((a, b) => a.sliceStart - b.sliceStart)
+  },
 })

@@ -1,6 +1,7 @@
 import { useState } from "react"
 import type { Id } from "../convex/_generated/dataModel"
 import AddUrlForm from "./components/AddUrlForm"
+import AggregationChart from "./components/AggregationChart"
 import PingChart from "./components/PingChart"
 import PingList from "./components/PingList"
 import PingOnceButton from "./components/PingOnceButton"
@@ -25,6 +26,9 @@ function App() {
 
       {/* chart */}
       <PingChart selectedUrlId={selectedUrlId} />
+
+      {/* aggregated chart */}
+      <AggregationChart selectedUrlId={selectedUrlId} />
 
       {/* list of pings */}
       <PingList selectedUrlId={selectedUrlId} />
