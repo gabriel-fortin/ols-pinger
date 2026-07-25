@@ -101,46 +101,68 @@ export async function addPingToAggregate(ctx: MutationCtx, ping: PingType,
 }
 
 export const reAggregatePings = mutation({
-  args: { urlId: v.id("urls") },
-  handler: async (ctx, { urlId }) => {
+  args: { url: v.string(), bucketSizes: v.optional(v.array(v.string())) },
+  handler: async (ctx, { url, bucketSizes }) => {
+    const urlId: Id<"urls"> = await ctx.db
+      .query("urls")
+      .filter(q => q.eq(q.field("url"), url))
+      .first()
+      .then(x => x?._id)
+    if (!urlId) throw new Error("Invalid URL")
+
     // Get all pings for this URL
     const allPings = await ctx.db
       .query("pings")
       .withIndex("by_urlId", (q) => q.eq("urlId", urlId))
       .collect()
+    if (allPings.length === 0) return
 
     // Get all aggregation sets for this URL
-    const sets = await ctx.db
+    let sets = await ctx.db
       .query("aggregationSet")
       .withIndex("by_urlId", (q) => q.eq("urlId", urlId))
       .collect()
+    if (bucketSizes)
+      sets = sets.filter(x => bucketSizes.includes(x.label))
 
     // Find the minimum timestamp to determine which buckets can be rebuilt
     const minTimestamp = allPings.length > 0
       ? Math.min(...allPings.map(p => p.timestamp))
       : Infinity
 
-    // Delete buckets that can be rebuilt (those >= earliest bucket for min timestamp)
     for (const aggSet of sets) {
       const sliceMs = aggSet.timeSliceSeconds * 1000
-      const firstDeletableBucketStart = Math.ceil(minTimestamp / sliceMs) * sliceMs
 
-      const buckets = await ctx.db
+      // find the list of buckets to remove
+      const deletableBuckets = await ctx.db
         .query("aggregationBuckets")
         .withIndex("by_set_and_sliceStart", (q) => q
           .eq("set", aggSet._id)
-          // Keep older buckets (they represent deleted pings)
-          .gte("sliceStart", firstDeletableBucketStart))
+          // Skip older buckets (which represent deleted pings), because we can't rebuild them
+          .gt("sliceStart", minTimestamp - sliceMs))
         .collect()
 
-      for (const bucket of buckets) {
-        await ctx.db.delete(bucket._id)
+      if (deletableBuckets.length > 0) {
+        const pingsFittingFirstBucket = allPings.filter(p =>
+          p.timestamp >= deletableBuckets[0].sliceStart
+          && p.timestamp < deletableBuckets[0].sliceStart + sliceMs)
+
+        // if we have less pings than were originally used to create the bucket
+        if (pingsFittingFirstBucket.length < deletableBuckets[0].pingCount) {
+          // we assume those pings were removed
+          // so we don't rebuild the bucket (because that would mean data loss)
+          deletableBuckets.shift() // remove first element
+        }
+
+        for (const bucket of deletableBuckets) {
+          await ctx.db.delete(bucket._id)
+        }
       }
 
       // Re-aggregate all pings
       for (const ping of allPings) {
-        // but ignore pings for a bucket that we keep
-        if (ping.timestamp < firstDeletableBucketStart) continue
+        // ignore pings for a bucket that we don't rebuild
+        if (ping.timestamp < (deletableBuckets[0]?.sliceStart ?? -Infinity) + sliceMs) continue
 
         await addPingToAggregate(ctx, {
           id: ping._id,
@@ -171,6 +193,7 @@ export const listSets = query({
 export const listBuckets = query({
   args: { setId: v.id("aggregationSet") },
   handler: async (ctx, { setId }) => {
+    console.log('HELLO')
     const buckets = await ctx.db
       .query("aggregationBuckets")
       .withIndex("by_set_and_sliceStart", (q) => q.eq("set", setId))

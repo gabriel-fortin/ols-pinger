@@ -107,6 +107,8 @@ function AggregationChart({ selectedUrlId }: AggregationChartProps) {
       <div className="agg-chart-scroll">
         <div className="agg-chart">
           {buckets.map((bucket) => {
+            const min = bucket.pingDurationMsMin
+            const max = bucket.pingDurationMsMax
             const avg = bucket.pingDurationMsSum / bucket.pingCount
             const avgHeight = Math.max((avg / maxDuration) * CHART_HEIGHT, 2)
             const minHeight = (bucket.pingDurationMsMin / maxDuration) * CHART_HEIGHT
@@ -117,11 +119,10 @@ function AggregationChart({ selectedUrlId }: AggregationChartProps) {
                 key={bucket._id}
                 className="agg-bar-col"
                 title={
-                  `${new Date(bucket.sliceStart).toLocaleString()}` +
-                  ` - ${bucket.status}` +
-                  ` - avg ${avg.toFixed(0)}ms` +
-                  ` - min ${bucket.pingDurationMsMin.toFixed(0)} / max ${bucket.pingDurationMsMax.toFixed(0)}ms` +
-                  ` - ${bucket.pingCount} pings`
+                  `${new Date(bucket.sliceStart).toLocaleString("en-GB")}` +
+                  ` — ${bucket.status}` +
+                  ` — avg[min/max]: ${avg.toFixed(0)}[${min.toFixed(0)}/${max.toFixed(0)}]ms` +
+                  ` — ${bucket.pingCount} pings`
                 }
               >
                 <div
