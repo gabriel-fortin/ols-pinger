@@ -103,7 +103,7 @@ export async function addPingToAggregate(ctx: MutationCtx, ping: PingType,
 export const reAggregatePings = mutation({
   args: { url: v.string(), bucketSizes: v.optional(v.array(v.string())) },
   handler: async (ctx, { url, bucketSizes }) => {
-    const urlId: Id<"urls"> = await ctx.db
+    const urlId = await ctx.db
       .query("urls")
       .filter(q => q.eq(q.field("url"), url))
       .first()
@@ -189,15 +189,44 @@ export const listSets = query({
   },
 })
 
-/** Buckets for an aggregation set, ordered chronologically by slice start. */
+/**
+ * Buckets of an aggregation set whose slice start falls in [from, to),
+ * ordered chronologically by slice start.
+ */
 export const listBuckets = query({
+  args: {
+    setId: v.id("aggregationSet"),
+    from: v.number(),
+    to: v.number(),
+  },
+  handler: async (ctx, { setId, from, to }) => {
+    return await ctx.db
+      .query("aggregationBuckets")
+      .withIndex("by_set_and_sliceStart", (q) => q
+        .eq("set", setId)
+        .gte("sliceStart", from)
+        .lt("sliceStart", to),
+      )
+      .collect()
+  },
+})
+
+/** Oldest and newest slice starts held by a set, or null when it has no buckets. */
+export const bucketBounds = query({
   args: { setId: v.id("aggregationSet") },
   handler: async (ctx, { setId }) => {
-    console.log('HELLO')
-    const buckets = await ctx.db
+    const oldest = await ctx.db
       .query("aggregationBuckets")
       .withIndex("by_set_and_sliceStart", (q) => q.eq("set", setId))
-      .collect()
-    return buckets.sort((a, b) => a.sliceStart - b.sliceStart)
+      .first()
+    if (!oldest) return null
+
+    const newest = await ctx.db
+      .query("aggregationBuckets")
+      .withIndex("by_set_and_sliceStart", (q) => q.eq("set", setId))
+      .order("desc")
+      .first()
+
+    return { first: oldest.sliceStart, last: newest?.sliceStart ?? oldest.sliceStart }
   },
 })
