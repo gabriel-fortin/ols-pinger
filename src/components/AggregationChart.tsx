@@ -1,4 +1,5 @@
 import { useRef, useState } from "react"
+import type { ReactElement } from "react"
 import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import type { Doc, Id } from "../../convex/_generated/dataModel"
@@ -8,8 +9,8 @@ const CHART_HEIGHT = 80
 const BAR_COUNT = 40
 
 /** One chart column: a bucket, or a placeholder for a slice that holds no pings. */
-interface Slot {
-  sliceStart: number
+interface ChartSlot {
+  slotStart: number
   bucket?: Doc<"aggregationBuckets">
 }
 
@@ -17,9 +18,14 @@ interface AggregationChartProps {
   selectedUrlId?: Id<"urls">
 }
 
+interface Range {
+  from: number
+  to: number
+}
+
 function AggregationChart({ selectedUrlId }: AggregationChartProps) {
   const [selectedSetId, setSelectedSetId] = useState<Id<"aggregationSet"> | undefined>(undefined)
-  /* slice start of the rightmost bucket; undefined follows the newest bucket */
+  /* slice start of the rightmost bucket; undefined indicates following the newest bucket */
   const [anchor, setAnchor] = useState<number | undefined>(undefined)
   const lastSelectedUrl = useRef<string>(undefined)
 
@@ -34,18 +40,18 @@ function AggregationChart({ selectedUrlId }: AggregationChartProps) {
   )
 
   const selectedSet = sets.find((s) => s._id === selectedSetId)
-  const sliceMs = (selectedSet?.timeSliceSeconds ?? 0) * 1000
+  const slotMs = (selectedSet?.timeSliceSeconds ?? 0) * 1000
 
   const windowEnd = anchor ?? bounds?.last
-  /* the half-open slice range covered by the visible columns */
-  const range =
-    windowEnd !== undefined && sliceMs > 0
-      ? { from: windowEnd - (BAR_COUNT - 1) * sliceMs, to: windowEnd + sliceMs }
+  /* the half-open range of buckets covered by the visible columns */
+  const bucketsRange: Range | undefined =
+    windowEnd !== undefined && slotMs > 0
+      ? { from: windowEnd - (BAR_COUNT - 1) * slotMs, to: windowEnd + slotMs }
       : undefined
 
   const buckets = useQuery(
     api.aggregations.listBuckets,
-    selectedSetId && range ? { setId: selectedSetId, ...range } : "skip",
+    selectedSetId && bucketsRange ? { setId: selectedSetId, ...bucketsRange } : "skip",
   ) ?? []
 
   // if URL was switched and aggregation sets for the new URL have loaded
@@ -56,26 +62,26 @@ function AggregationChart({ selectedUrlId }: AggregationChartProps) {
   }
 
   const bucketsBySliceStart = new Map(buckets.map((b) => [b.sliceStart, b]))
-  const slots: Slot[] = !range
+  const chartSlots: ChartSlot[] = !bucketsRange
     ? []
     : Array.from({ length: BAR_COUNT }, (_, i) => {
-      const sliceStart = range.from + i * sliceMs
-      return { sliceStart, bucket: bucketsBySliceStart.get(sliceStart) }
+      const slotStart = bucketsRange.from + i * slotMs
+      return { slotStart, bucket: bucketsBySliceStart.get(slotStart) }
     })
 
   const maxDuration = Math.max(...buckets.map((b) => b.pingDurationMsMax), 100)
 
-  const canPageBack = !!bounds && !!range && range.from > bounds.first
+  const canPageBack = !!bounds && !!bucketsRange && bucketsRange.from > bounds.first
   const canPageForward = anchor !== undefined
 
   function pageBack() {
     if (windowEnd === undefined) return
-    setAnchor(windowEnd - BAR_COUNT * sliceMs)
+    setAnchor(windowEnd - BAR_COUNT * slotMs)
   }
 
   function pageForward() {
     if (windowEnd === undefined || !bounds) return
-    const next = windowEnd + BAR_COUNT * sliceMs
+    const next = windowEnd + BAR_COUNT * slotMs
     // back to following the newest bucket once we catch up with it
     setAnchor(next >= bounds.last ? undefined : next)
   }
@@ -115,17 +121,17 @@ function AggregationChart({ selectedUrlId }: AggregationChartProps) {
         .agg-chart {
           display: flex;
           align-items: flex-end;
+          justify-content: space-between;
           gap: 2px;
           height: ${CHART_HEIGHT}px;
           width: 100%;
           border-bottom: 1px solid var(--baseline);
-          margin-right: 1em;
           margin-bottom: 0.7em;
         }
         .agg-bar-col {
           position: relative;
           flex: 1 1 0;
-          min-width: 3px;
+          min-width: 9px;
           height: 100%;
           display: flex;
           align-items: flex-end;
@@ -150,6 +156,28 @@ function AggregationChart({ selectedUrlId }: AggregationChartProps) {
         }
       `}</style>
 
+      <SlotSizeControls selectedSetId={selectedSetId} selectSet={selectSet} aggregationSets={sets} />
+
+      <SlotsVisualisation maxPingMs={maxDuration} chartSlots={chartSlots}
+        canPageBack={canPageBack} canPageForward={canPageForward}
+        pageBack={pageBack} pageForward={pageForward} />
+
+      <RangeAnnotation bucketsRange={bucketsRange} />
+    </div>
+  )
+}
+
+interface SlotSizeControlsProps {
+  selectedSetId: string,
+  selectSet: (string) => void,
+  aggregationSets: Doc<"aggregationSet">[]
+}
+
+function SlotSizeControls(
+  { selectedSetId, selectSet, aggregationSets }: SlotSizeControlsProps
+): ReactElement {
+  return (
+    <div>
       <span style={{ marginRight: "0.5em" }}>
         Each bar represents:
       </span>
@@ -157,82 +185,109 @@ function AggregationChart({ selectedUrlId }: AggregationChartProps) {
         <option value="" disabled>
           Aggregation
         </option>
-        {sets.map((s) => (
+        {aggregationSets.map(s => (
           <option key={s._id} value={s._id}>
             {s.label}
           </option>
         ))}
       </select>
+    </div>
+  )
+}
 
-      <div className="agg-chart-scroll">
-        <div className="agg-chart">
-          <button type="button" onClick={pageBack} disabled={!canPageBack} title="Earlier">
-            ◀
-          </button>
-          {slots.map(({ sliceStart, bucket }) => {
-            const time = new Date(sliceStart).toLocaleString("en-GB")
+interface BarsVisualisationProps {
+  maxPingMs: number
+  chartSlots: ChartSlot[]
+  canPageBack: boolean
+  canPageForward: boolean
+  pageBack: () => void
+  pageForward: () => void
+}
 
-            if (!bucket) {
-              return (
-                <div
-                  key={sliceStart}
-                  className="agg-bar-col"
-                  title={`${time} — no pings`}
-                >
-                  <div className="agg-bar agg-bar-empty" />
-                </div>
-              )
-            }
-
-            const min = bucket.pingDurationMsMin
-            const max = bucket.pingDurationMsMax
-            const avg = bucket.pingDurationMsSum / bucket.pingCount
-            const avgHeight = Math.max((avg / maxDuration) * CHART_HEIGHT, 2)
-            const minHeight = (min / maxDuration) * CHART_HEIGHT
-            const maxHeight = (max / maxDuration) * CHART_HEIGHT
-
-            return (
-              <div
-                key={sliceStart}
-                className="agg-bar-col"
-                title={
-                  `${time}` +
-                  ` — ${bucket.status}` +
-                  ` — avg[min/max]: ${avg.toFixed(0)}[${min.toFixed(0)}/${max.toFixed(0)}]ms` +
-                  ` — ${bucket.pingCount} pings`
-                }
-              >
-                <div
-                  className="agg-whisker"
-                  style={{
-                    bottom: `${minHeight}px`,
-                    height: `${Math.max(maxHeight - minHeight, 1)}px`,
-                  }}
-                />
-                <div
-                  className="agg-bar"
-                  style={{
-                    height: `${avgHeight}px`,
-                    background: barColor(bucket.status),
-                  }}
-                />
-              </div>
-            )
-          })}
-          <button type="button" onClick={pageForward} disabled={!canPageForward} title="Later">
-            {canPageForward ? "▶" : "live"}
-          </button>
-        </div>
+function SlotsVisualisation(
+  { maxPingMs, chartSlots, canPageBack, canPageForward, pageBack, pageForward }: BarsVisualisationProps
+): ReactElement {
+  return (
+    <div className="agg-chart-scroll">
+      <div className="agg-chart">
+        <button type="button" onClick={pageBack} disabled={!canPageBack} title="Earlier">
+          ◀
+        </button>
+        {chartSlots.map(({ slotStart, bucket }) =>
+          !bucket ? EmptyBar(slotStart) : NormalBar(maxPingMs, bucket)
+        )}
+        <button type="button" onClick={pageForward} disabled={!canPageForward} title="Later">
+          {canPageForward ? "▶" : "live"}
+        </button>
       </div>
+    </div>
+  )
+}
 
-      {range && (
-        <div className="agg-range">
-          <span>Data range: &nbsp;</span>
-          {new Date(range.from).toLocaleString("en-GB")}
-          {" → "}
-          {new Date(range.to).toLocaleString("en-GB")}
-        </div>
-      )}
+function RangeAnnotation({ bucketsRange }: { bucketsRange: Range | undefined }) {
+  if (!bucketsRange) return null
+
+  return (
+    <div className="agg-range">
+      <span>Data range: &nbsp;</span>
+      {new Date(bucketsRange.from).toLocaleString("en-GB")}
+      {" → "}
+      {new Date(bucketsRange.to).toLocaleString("en-GB")}
+    </div>
+  )
+}
+
+function EmptyBar(slotStart: number) {
+  const prettyTime = new Date(slotStart).toLocaleString("en-GB")
+
+  return (
+    <div
+      key={slotStart}
+      className="agg-bar-col"
+      title={`${prettyTime} — no pings`}
+    >
+      <div className="agg-bar agg-bar-empty" />
+    </div>
+  )
+}
+
+function NormalBar(maxPingMs: number, bucket: Doc<"aggregationBuckets">) {
+  const prettyTime = new Date(bucket.sliceStart).toLocaleString("en-GB")
+
+  const averagePing = bucket.pingDurationMsSum / bucket.pingCount
+  const avgText = averagePing.toFixed(0)
+  const minText = bucket.pingDurationMsMin.toFixed(0)
+  const maxText = bucket.pingDurationMsMax.toFixed(0)
+
+  const avgHeight = Math.max((averagePing / maxPingMs) * CHART_HEIGHT, 2)
+  const whiskerMinHeight = (bucket.pingDurationMsMin / maxPingMs) * CHART_HEIGHT
+  const whiskerMaxHeight = (bucket.pingDurationMsMax / maxPingMs) * CHART_HEIGHT
+
+  return (
+    <div
+      key={bucket.sliceStart}
+      className="agg-bar-col"
+      title={
+        `${prettyTime}` +
+        ` — ${bucket.status}` +
+        ` — avg[min/max]: ${avgText}[${minText}/${maxText}]ms` +
+        ` — ${bucket.pingCount} pings`
+      }
+    >
+      <div
+        className="agg-whisker"
+        style={{
+          bottom: `${whiskerMinHeight}px`,
+          height: `${Math.max(whiskerMaxHeight - whiskerMinHeight, 1)}px`,
+        }}
+      />
+      <div
+        className="agg-bar"
+        style={{
+          height: `${avgHeight}px`,
+          background: barColor(bucket.status),
+        }}
+      />
     </div>
   )
 }
