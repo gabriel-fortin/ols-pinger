@@ -23,10 +23,23 @@ interface Range {
   to: number
 }
 
-function AggregationChart({ selectedUrlId }: AggregationChartProps) {
+interface BoundaryBucketsStartMs {
+  first: number
+  last: number
+}
+
+interface UseAggregationChartResult {
+  sets: Doc<"aggregationSet">[]
+  selectedSetId: Id<"aggregationSet"> | undefined
+  selectSet: (value: string) => void
+  chartSlots: ChartSlot[]
+  maxPingMs: number
+  paging: PagingResult
+  window: Range | undefined
+}
+
+function useAggregationChart(selectedUrlId?: Id<"urls">): UseAggregationChartResult {
   const [selectedSetId, setSelectedSetId] = useState<Id<"aggregationSet"> | undefined>(undefined)
-  /* slice start of the rightmost bucket; undefined indicates following the newest bucket */
-  const [anchor, setAnchor] = useState<number | undefined>(undefined)
   const lastSelectedUrl = useRef<string>(undefined)
 
   const sets = useQuery(
@@ -34,63 +47,143 @@ function AggregationChart({ selectedUrlId }: AggregationChartProps) {
     selectedUrlId ? { urlId: selectedUrlId } : "skip",
   ) ?? []
 
-  const bounds = useQuery(
+  const bounds: BoundaryBucketsStartMs = useQuery(
     api.aggregations.bucketBounds,
     selectedSetId ? { setId: selectedSetId } : "skip",
   )
 
-  const selectedSet = sets.find((s) => s._id === selectedSetId)
-  const slotMs = (selectedSet?.timeSliceSeconds ?? 0) * 1000
+  const slotMs = (sets.find((s) => s._id === selectedSetId)?.timeSliceSeconds ?? 0) * 1000
 
-  const windowEnd = anchor ?? bounds?.last
-  /* the half-open range of buckets covered by the visible columns */
-  const bucketsRange: Range | undefined =
-    windowEnd !== undefined && slotMs > 0
-      ? { from: windowEnd - (BAR_COUNT - 1) * slotMs, to: windowEnd + slotMs }
-      : undefined
+  /* the displayed time window (a right-opened range);
+     either set the end of the range or make it follow live data */
+  const { window, setWindowEnd, setWindowTracksLive }
+    = useWindow(bounds?.first, bounds?.last + slotMs, BAR_COUNT * slotMs)
+
+  const paging = usePaging(window, bounds, setWindowEnd, slotMs)
 
   const buckets = useQuery(
     api.aggregations.listBuckets,
-    selectedSetId && bucketsRange ? { setId: selectedSetId, ...bucketsRange } : "skip",
+    selectedSetId && window ? { setId: selectedSetId, ...window } : "skip",
   ) ?? []
 
   // if URL was switched and aggregation sets for the new URL have loaded
   if (lastSelectedUrl.current !== selectedUrlId && sets.length > 0) {
     lastSelectedUrl.current = selectedUrlId
     setSelectedSetId(sets.at(-1)._id)
-    setAnchor(undefined)
+    setWindowTracksLive()
   }
 
+  const maxPingMs = Math.max(...buckets.map((b) => b.pingDurationMsMax), 100)
   const bucketsBySliceStart = new Map(buckets.map((b) => [b.sliceStart, b]))
-  const chartSlots: ChartSlot[] = !bucketsRange
+  const chartSlots: ChartSlot[] = !window
     ? []
     : Array.from({ length: BAR_COUNT }, (_, i) => {
-      const slotStart = bucketsRange.from + i * slotMs
+      const slotStart = window.from + i * slotMs
       return { slotStart, bucket: bucketsBySliceStart.get(slotStart) }
     })
 
-  const maxDuration = Math.max(...buckets.map((b) => b.pingDurationMsMax), 100)
+  function selectSet(value: string) {
+    setSelectedSetId(value ? (value as Id<"aggregationSet">) : undefined)
+    setWindowTracksLive()
+  }
 
-  const canPageBack = !!bounds && !!bucketsRange && bucketsRange.from > bounds.first
-  const canPageForward = anchor !== undefined
+  return {
+    sets,
+    selectedSetId,
+    selectSet,
+    chartSlots,
+    maxPingMs,
+    paging,
+    window,
+  }
+}
+
+interface PagingResult {
+  canPageBack: boolean
+  canPageForward: boolean
+  pageBack: () => void
+  pageForward: () => void
+}
+
+function usePaging(
+  window: Range | undefined, // [from, to)  // right-opened range
+  bounds: { first: number, last: number },
+  setWindowEnd: (_: number) => void,
+  slotMs: number,
+): PagingResult {
+
+  if (!bounds || !window || !slotMs) {
+    return {
+      canPageBack: false,
+      canPageForward: false,
+      pageBack: () => { },
+      pageForward: () => { },
+    }
+  }
+
+  const canPageBack = window.from > bounds.first
+  const canPageForward = window.to < bounds.last + slotMs
 
   function pageBack() {
-    if (windowEnd === undefined) return
-    setAnchor(windowEnd - BAR_COUNT * slotMs)
+    setWindowEnd(window.from)
   }
 
   function pageForward() {
-    if (windowEnd === undefined || !bounds) return
-    const next = windowEnd + BAR_COUNT * slotMs
-    // back to following the newest bucket once we catch up with it
-    setAnchor(next >= bounds.last ? undefined : next)
+    const next = window.to + BAR_COUNT * slotMs
+    setWindowEnd(next)
   }
 
-  function selectSet(value: string) {
-    setSelectedSetId(value ? (value as Id<"aggregationSet">) : undefined)
-    // a slice start from the previous set means nothing at the new slice size
-    setAnchor(undefined)
+  return {
+    canPageBack,
+    canPageForward,
+    pageBack,
+    pageForward,
   }
+}
+
+interface WindowResult {
+  /** Current window; undefined if no data to window */
+  window: Range | undefined
+  /** Set the right end of the window; same as `setWindowLive` if exceeds the right bound */
+  setWindowEnd: (_: number) => void
+  /** The window follows live data as they're being added */
+  setWindowTracksLive: () => void
+}
+
+function useWindow(min: number, max: number, windowSize: number): WindowResult {
+  const [currentEnd, setCurrentEnd] = useState<number | 'LIVE'>('LIVE')
+
+  if (!min || !max || windowSize <= 0) {
+    return {
+      window: undefined,
+      setWindowEnd: () => { },
+      setWindowTracksLive: () => { },
+    }
+  }
+
+  const windowEnd = (currentEnd === 'LIVE') ? max : currentEnd
+  const window = {
+    from: windowEnd - windowSize,
+    to: windowEnd,
+  }
+
+  return {
+    window,
+    setWindowEnd: (newEnd) => setCurrentEnd(newEnd >= max ? 'LIVE' : newEnd),
+    setWindowTracksLive: () => setCurrentEnd('LIVE'),
+  }
+}
+
+function AggregationChart({ selectedUrlId }: AggregationChartProps) {
+  const {
+    sets,
+    selectedSetId,
+    selectSet,
+    chartSlots,
+    maxPingMs,
+    paging,
+    window,
+  } = useAggregationChart(selectedUrlId)
 
   if (!selectedUrlId) return null
 
@@ -158,11 +251,13 @@ function AggregationChart({ selectedUrlId }: AggregationChartProps) {
 
       <SlotSizeControls selectedSetId={selectedSetId} selectSet={selectSet} aggregationSets={sets} />
 
-      <SlotsVisualisation maxPingMs={maxDuration} chartSlots={chartSlots}
-        canPageBack={canPageBack} canPageForward={canPageForward}
-        pageBack={pageBack} pageForward={pageForward} />
+      <ChartContainer>
+        <BackButton canPageBack={paging.canPageBack} pageBack={paging.pageBack} />
+        <Chart maxPingMs={maxPingMs} chartSlots={chartSlots} />
+        <ForwardButton canPageForward={paging.canPageForward} pageForward={paging.pageForward} />
+      </ChartContainer>
 
-      <RangeAnnotation bucketsRange={bucketsRange} />
+      <RangeAnnotation bucketsRange={window} />
     </div>
   )
 }
@@ -195,45 +290,23 @@ function SlotSizeControls(
   )
 }
 
-interface BarsVisualisationProps {
-  maxPingMs: number
-  chartSlots: ChartSlot[]
-  canPageBack: boolean
-  canPageForward: boolean
-  pageBack: () => void
-  pageForward: () => void
-}
-
-function SlotsVisualisation(
-  { maxPingMs, chartSlots, canPageBack, canPageForward, pageBack, pageForward }: BarsVisualisationProps
+function ChartContainer({ children }
+  : { children?: ReactElement[] }
 ): ReactElement {
   return (
     <div className="agg-chart-scroll">
       <div className="agg-chart">
-        <button type="button" onClick={pageBack} disabled={!canPageBack} title="Earlier">
-          ◀
-        </button>
-        {chartSlots.map(({ slotStart, bucket }) =>
-          !bucket ? EmptyBar(slotStart) : NormalBar(maxPingMs, bucket)
-        )}
-        <button type="button" onClick={pageForward} disabled={!canPageForward} title="Later">
-          {canPageForward ? "▶" : "live"}
-        </button>
+        {children}
       </div>
     </div>
   )
 }
 
-function RangeAnnotation({ bucketsRange }: { bucketsRange: Range | undefined }) {
-  if (!bucketsRange) return null
-
-  return (
-    <div className="agg-range">
-      <span>Data range: &nbsp;</span>
-      {new Date(bucketsRange.from).toLocaleString("en-GB")}
-      {" → "}
-      {new Date(bucketsRange.to).toLocaleString("en-GB")}
-    </div>
+function Chart({ maxPingMs, chartSlots }
+  : { maxPingMs: number, chartSlots: ChartSlot[] }
+): ReactElement[] {
+  return chartSlots.map(
+    ({ slotStart, bucket }) => !bucket ? EmptyBar(slotStart) : NormalBar(slotStart, maxPingMs, bucket)
   )
 }
 
@@ -251,7 +324,7 @@ function EmptyBar(slotStart: number) {
   )
 }
 
-function NormalBar(maxPingMs: number, bucket: Doc<"aggregationBuckets">) {
+function NormalBar(slotStart: number, maxPingMs: number, bucket: Doc<"aggregationBuckets">) {
   const prettyTime = new Date(bucket.sliceStart).toLocaleString("en-GB")
 
   const averagePing = bucket.pingDurationMsSum / bucket.pingCount
@@ -265,7 +338,8 @@ function NormalBar(maxPingMs: number, bucket: Doc<"aggregationBuckets">) {
 
   return (
     <div
-      key={bucket.sliceStart}
+      key={slotStart}
+      // key={bucket.sliceStart}
       className="agg-bar-col"
       title={
         `${prettyTime}` +
@@ -288,6 +362,40 @@ function NormalBar(maxPingMs: number, bucket: Doc<"aggregationBuckets">) {
           background: barColor(bucket.status),
         }}
       />
+    </div>
+  )
+}
+
+function BackButton({ canPageBack, pageBack }
+  : { canPageBack: boolean, pageBack: () => void }
+): ReactElement {
+  return (
+    <button type="button" onClick={pageBack} disabled={!canPageBack} title="Earlier">
+      ◀
+    </button>
+  )
+}
+
+function ForwardButton({ canPageForward, pageForward }
+  : { canPageForward: boolean, pageForward: () => void }
+): ReactElement {
+
+  return (
+    <button type="button" onClick={pageForward} disabled={!canPageForward} title="Later">
+      {canPageForward ? "▶" : "live"}
+    </button>
+  )
+}
+
+function RangeAnnotation({ bucketsRange }: { bucketsRange: Range | undefined }) {
+  if (!bucketsRange) return null
+
+  return (
+    <div className="agg-range">
+      <span>Data range: &nbsp;</span>
+      {new Date(bucketsRange.from).toLocaleString("en-GB")}
+      {" → "}
+      {new Date(bucketsRange.to).toLocaleString("en-GB")}
     </div>
   )
 }
