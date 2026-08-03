@@ -51,7 +51,7 @@ function AggregationChart({ selectedUrlId }: AggregationChartProps) {
   // if URL was switched and aggregation sets for the new URL have loaded
   if (lastSelectedUrl.current !== selectedUrlId && sets.length > 0) {
     lastSelectedUrl.current = selectedUrlId
-    setSelectedSetId(sets.at(-1)._id)
+    setSelectedSetId(sets.at(-1)!._id)
     setAnchor(undefined)
   }
 
