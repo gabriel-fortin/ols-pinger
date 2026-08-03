@@ -23,14 +23,10 @@ function AggregationChart({ selectedUrlId }: AggregationChartProps) {
   const [anchor, setAnchor] = useState<number | undefined>(undefined)
   const lastSelectedUrl = useRef<string>(undefined)
 
-  const sets = useQuery(
-    api.aggregations.listSets,
-    selectedUrlId ? { urlId: selectedUrlId } : "skip",
-  ) ?? []
-
+  const sets = useQuery( api.aggregations.listSets, ) ?? []
   const bounds = useQuery(
     api.aggregations.bucketBounds,
-    selectedSetId ? { setId: selectedSetId } : "skip",
+    selectedSetId ? { setId: selectedSetId, urlId: selectedUrlId } : "skip",
   )
 
   const selectedSet = sets.find((s) => s._id === selectedSetId)
@@ -45,7 +41,7 @@ function AggregationChart({ selectedUrlId }: AggregationChartProps) {
 
   const buckets = useQuery(
     api.aggregations.listBuckets,
-    selectedSetId && range ? { setId: selectedSetId, ...range } : "skip",
+    selectedSetId && range ? { setId: selectedSetId, urlId: selectedUrlId, ...range } : "skip",
   ) ?? []
 
   // if URL was switched and aggregation sets for the new URL have loaded

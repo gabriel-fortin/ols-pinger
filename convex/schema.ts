@@ -32,13 +32,13 @@ export default defineSchema({
   aggregationSet: defineTable({
     label: v.string(),
     timeSliceSeconds: v.number(),
-    urlId: v.id("urls"),
-  })
-    .index("by_urlId", ["urlId"]),
+    isEnabled: v.boolean(),
+  }),
 
   /* aggregated ping results */
   aggregationBuckets: defineTable({
     set: v.id("aggregationSet"),
+    urlId: v.id("urls"),
     sliceStart: v.number(),
     pingDurationMsMin: v.number(),
     pingDurationMsMax: v.number(),
@@ -52,6 +52,6 @@ export default defineSchema({
       v.literal("empty"),
     ),
   })
-    .index("by_set_and_sliceStart", ["set", "sliceStart"]),
+    .index("by_set_url_sliceStart", ["set", "urlId", "sliceStart"]),
 
 })

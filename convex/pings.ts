@@ -31,9 +31,8 @@ export const saveResult = mutation({
     duration: v.number(),
   },
   handler: async (ctx, { urlId, timestamp, status, duration }) => {
-    const id = await ctx.db.insert("pings", { urlId, timestamp, status, duration })
+    await ctx.db.insert("pings", { urlId, timestamp, status, duration })
     await aggregations.addPingToAggregates(ctx, {
-      id,
       urlId,
       timestamp,
       status,
@@ -50,7 +49,10 @@ export const pingUrl = action({
 })
 
 export const schedulePing = action({
-  args: { urlId: v.id("urls"), intervalId: v.id("intervals") },
+  args: {
+    urlId: v.id("urls"),
+    intervalId: v.id("intervals"),
+  },
   handler: async (ctx, { urlId, intervalId }) => {
     await ctx.runAction(internal.pings.schedulePingInternal, {
       urlId,
@@ -95,7 +97,11 @@ async function makeAndSavePingCall(ctx: ActionCtx, urlId: Id<"urls">) {
 }
 
 export const schedulePingInternal = internalAction({
-  args: { urlId: v.id("urls"), intervalId: v.id("intervals"), isInitial: v.boolean() },
+  args: {
+    urlId: v.id("urls"),
+    intervalId: v.id("intervals"),
+    isInitial: v.boolean(),
+  },
   handler: async (ctx, { urlId, intervalId, isInitial }) => {
     if (!isInitial) {
       const existing = await ctx.runQuery(api.schedules.get, { urlId })
