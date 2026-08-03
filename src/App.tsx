@@ -3,7 +3,6 @@ import type { Id } from "../convex/_generated/dataModel"
 import AddUrlForm from "./components/AddUrlForm"
 import AggregationChart from "./components/AggregationChart"
 import PingChart from "./components/PingChart"
-import PingList from "./components/PingList"
 import PingOnceButton from "./components/PingOnceButton"
 import ScheduleControls from "./components/ScheduleControls"
 import UrlSelector from "./components/UrlSelector"
@@ -29,9 +28,6 @@ function App() {
 
       {/* aggregated chart */}
       <AggregationChart selectedUrlId={selectedUrlId} />
-
-      {/* list of pings */}
-      <PingList selectedUrlId={selectedUrlId} />
     </div>
   )
 }
