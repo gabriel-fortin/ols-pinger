@@ -6,7 +6,7 @@ export default defineSchema({
     urlId: v.id("urls"),
     timestamp: v.number(),
     status: v.number(),
-    duration: v.number(),
+    durationMs: v.number(),
   })
     .index("by_urlId", ["urlId"]),
 

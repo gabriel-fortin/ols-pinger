@@ -144,7 +144,7 @@ export const reAggregatePings = mutation({
           urlId: ping.urlId,
           status: ping.status,
           timestamp: ping.timestamp,
-          durationMs: ping.duration,
+          durationMs: ping.durationMs,
         }
         await addPingToAggregate(ctx, p, aggSet)
       }

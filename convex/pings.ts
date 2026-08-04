@@ -28,15 +28,15 @@ export const saveResult = mutation({
     urlId: v.id("urls"),
     timestamp: v.number(),
     status: v.number(),
-    duration: v.number(),
+    durationMs: v.number(),
   },
-  handler: async (ctx, { urlId, timestamp, status, duration }) => {
-    await ctx.db.insert("pings", { urlId, timestamp, status, duration })
+  handler: async (ctx, { urlId, timestamp, status, durationMs }) => {
+    await ctx.db.insert("pings", { urlId, timestamp, status, durationMs })
     await aggregations.addPingToAggregates(ctx, {
       urlId,
       timestamp,
       status,
-      durationMs: duration,
+      durationMs,
     })
   },
 })
@@ -91,9 +91,9 @@ async function makeAndSavePingCall(ctx: ActionCtx, urlId: Id<"urls">) {
   } catch {
     status = 0
   }
-  const duration = Date.now() - timestamp
+  const durationMs = Date.now() - timestamp
 
-  await ctx.runMutation(api.pings.saveResult, { urlId, timestamp, status, duration })
+  await ctx.runMutation(api.pings.saveResult, { urlId, timestamp, status, durationMs })
 }
 
 export const schedulePingInternal = internalAction({
