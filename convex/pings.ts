@@ -51,7 +51,7 @@ export const pingUrl = action({
 export const schedulePing = action({
   args: {
     urlId: v.id("urls"),
-    intervalId: v.id("intervals"),
+    intervalId: v.id("scheduleIntervals"),
   },
   handler: async (ctx, { urlId, intervalId }) => {
     await ctx.runAction(internal.pings.schedulePingInternal, {
@@ -99,7 +99,7 @@ async function makeAndSavePingCall(ctx: ActionCtx, urlId: Id<"urls">) {
 export const schedulePingInternal = internalAction({
   args: {
     urlId: v.id("urls"),
-    intervalId: v.id("intervals"),
+    intervalId: v.id("scheduleIntervals"),
     isInitial: v.boolean(),
   },
   handler: async (ctx, { urlId, intervalId, isInitial }) => {
@@ -109,7 +109,7 @@ export const schedulePingInternal = internalAction({
       if (!existing) return
     }
 
-    const interval = await ctx.runQuery(api.intervals.get, { intervalId })
+    const interval = await ctx.runQuery(api.scheduleIntervals.get, { intervalId })
     if (!interval) {
       throw new Error("Ah, the interval was not found, can't schedule pings :(")
     }

@@ -28,12 +28,12 @@ export const createAggregationSets = internalMutation({
 
 export const createScheduleIntervals = internalMutation({
   handler: async (ctx: MutationCtx) => {
-    const existingIntervals = await ctx.db.query("intervals").collect()
+    const existingIntervals = await ctx.db.query("scheduleIntervals").collect()
 
     for (const interval of SCHEDULE_INTERVALS_SECONDS) {
       if (existingIntervals.find(x => x.seconds === interval)) continue
 
-      await ctx.db.insert("intervals", {
+      await ctx.db.insert("scheduleIntervals", {
         label: helpers.secondsToLabel(interval),
         seconds: interval,
       })

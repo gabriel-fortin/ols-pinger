@@ -14,7 +14,7 @@ export const get = query({
 export const register = internalMutation({
   args: {
     urlId: v.id("urls"),
-    intervalId: v.id("intervals"),
+    intervalId: v.id("scheduleIntervals"),
     scheduledFunctionId: v.id("_scheduled_functions"),
   },
   handler: async (ctx, { urlId, intervalId, scheduledFunctionId }) => {

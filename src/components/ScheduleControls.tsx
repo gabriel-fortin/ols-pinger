@@ -8,9 +8,9 @@ interface ScheduleControlsProps {
 }
 
 function ScheduleControls({ selectedUrlId }: ScheduleControlsProps) {
-  const [selectedIntervalId, setSelectedIntervalId] = useState<Id<"intervals"> | undefined>(undefined)
+  const [selectedIntervalId, setSelectedIntervalId] = useState<Id<"scheduleIntervals"> | undefined>(undefined)
   
-  const intervals = useQuery(api.intervals.list) ?? []
+  const intervals = useQuery(api.scheduleIntervals.list) ?? []
   const schedule = useQuery(api.schedules.get, selectedUrlId ? { urlId: selectedUrlId } : "skip")
   const scheduleUrlPinging = useAction(api.pings.schedulePing)
   const unscheduleUrlPinging = useAction(api.pings.unschdulePing)
@@ -38,7 +38,7 @@ function ScheduleControls({ selectedUrlId }: ScheduleControlsProps) {
             value={selectedIntervalId ?? ""}
             onChange={(e) =>
               setSelectedIntervalId(
-                e.target.value ? (e.target.value as Id<"intervals">) : undefined,
+                e.target.value ? (e.target.value as Id<"scheduleIntervals">) : undefined,
               )
             }
           >
