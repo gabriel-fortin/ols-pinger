@@ -158,7 +158,7 @@ export const listSets = query({
   handler: async (ctx) => {
     const sets = await ctx.db
       .query("aggregationSet")
-      .filter(q => q.eq(q.field("isEnabled"), true))
+      .filter(q => q.eq(q.field("isAvailableInUi"), true))
       .collect()
     return sets.sort((a, b) => a.timeSliceSeconds - b.timeSliceSeconds)
   },

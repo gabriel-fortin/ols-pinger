@@ -32,7 +32,7 @@ export default defineSchema({
   aggregationSet: defineTable({
     label: v.string(),
     timeSliceSeconds: v.number(),
-    isEnabled: v.boolean(),
+    isAvailableInUi: v.boolean(),
   }),
 
   /* aggregated ping results */

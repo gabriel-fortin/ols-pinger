@@ -20,7 +20,7 @@ export const createAggregationSets = internalMutation({
       await ctx.db.insert("aggregationSet", {
         label: helpers.secondsToLabel(timeSliceSeconds),
         timeSliceSeconds,
-        isEnabled: true,
+        isAvailableInUi: true,
       })
     }
   }
