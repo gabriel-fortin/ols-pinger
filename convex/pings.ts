@@ -65,13 +65,13 @@ export const schedulePing = action({
 export const unschdulePing = action({
   args: { urlId: v.id("urls") },
   handler: async (ctx, { urlId }) => {
-    await ctx.runMutation(internal.schedules.unregister, { urlId })
-
     const existing = await ctx.runQuery(api.schedules.get, { urlId })
     // a schedule could have ben removed manually from the dashboard
     if (!existing) return
-
+    
     await ctx.scheduler.cancel(existing.scheduledFunctionId)
+
+    await ctx.runMutation(internal.schedules.unregister, { urlId })
   }
 })
 
