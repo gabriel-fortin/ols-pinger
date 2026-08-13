@@ -3,6 +3,7 @@ import { useQuery } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import type { Doc, Id } from "../../../../convex/_generated/dataModel"
 import { usePaging } from "./usePaging"
+import { useStableBuckets } from "./useStableBuckets"
 
 
 /* number of time slices shown at once */
@@ -34,12 +35,7 @@ export function useAggregationChart(selectedUrlId: Id<"urls"> | undefined) {
   const { page, canPageBack, canPageForward, pageBack, pageForward, resetPage }
     = usePaging(BAR_COUNT * slotMs, bounds?.first, (bounds?.last ?? NaN) + slotMs)
 
-  const buckets = useQuery(
-    api.aggregations.listBuckets,
-    (selectedSetId && selectedUrlId && page)
-      ? { setId: selectedSetId, urlId: selectedUrlId, ...page }
-      : "skip",
-  ) ?? []
+  const buckets = useStableBuckets(selectedSetId, selectedUrlId, page, slotMs)
 
   // if URL was switched and aggregation sets for the new URL have loaded
   if (lastSelectedUrl.current !== selectedUrlId && sets.length > 0) {

@@ -1,20 +1,16 @@
 import { useState } from "react"
+import type { PageRange } from "./PageRange"
 
 
 export interface PagedWindowResult {
   /** Current page; undefined if no data available */
-  page: Range | undefined
+  page: PageRange | undefined
   canPageBack: boolean
   canPageForward: boolean
   pageBack: () => void
   pageForward: () => void
   /** Make the current page follow the newest data */
   resetPage: () => void
-}
-
-interface Range {
-  from: number
-  to: number
 }
 
 export function usePaging(pageSize: number, min?: number, max?: number): PagedWindowResult {
