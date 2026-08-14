@@ -48,7 +48,7 @@ export function useStableBuckets(
   if (!setId || !urlId || !page) return []
 
   const buckets = (canOptimise && cached)
-    ? [...cached.buckets.filter((b) => b.sliceStart >= page.from && b.sliceStart < queryFrom), ...fresh]
+    ? [...cached.buckets.filter((b) => b.sliceStart >= page.from && b.sliceStart < queryFrom!), ...fresh]
     : fresh
 
   cacheData.current = { setId, urlId, ...page, buckets }
