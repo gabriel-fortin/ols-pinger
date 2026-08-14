@@ -12,6 +12,7 @@ function UrlSelector({ selectedUrlId, onSelectedUrlIdChange }: UrlSelectorProps)
 
   return (
     <select
+      className="select select-bordered"
       value={selectedUrlId ?? ""}
       onChange={(e) =>
         onSelectedUrlIdChange(

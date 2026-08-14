@@ -12,13 +12,14 @@ function AddUrlForm() {
   }
 
   return (
-    <div>
+    <div className="flex gap-2">
       <input
+        className="input input-bordered"
         value={url}
         onChange={(e) => setUrl(e.target.value)}
         placeholder="Enter a URL"
       />
-      <button type="button" onClick={handleAddUrl}>
+      <button type="button" className="btn btn-primary" onClick={handleAddUrl}>
         Add URL
       </button>
     </div>

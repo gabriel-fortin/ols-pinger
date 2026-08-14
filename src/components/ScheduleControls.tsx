@@ -31,10 +31,11 @@ function ScheduleControls({ selectedUrlId }: ScheduleControlsProps) {
   }
 
   return (
-    <div>
+    <div className="flex items-center gap-2">
       {!scheduleExists && (
         <>
           <select
+            className="select select-bordered"
             value={selectedIntervalId ?? ""}
             onChange={(e) =>
               setSelectedIntervalId(
@@ -53,6 +54,7 @@ function ScheduleControls({ selectedUrlId }: ScheduleControlsProps) {
           </select>
           <button
             type="button"
+            className="btn btn-primary"
             onClick={handleSchedulePings}
             disabled={!selectedIntervalId}
           >
@@ -61,7 +63,7 @@ function ScheduleControls({ selectedUrlId }: ScheduleControlsProps) {
         </>
       )}
       {scheduleExists && (
-        <button type="button" onClick={handleUnschedulePings}>
+        <button type="button" className="btn btn-secondary" onClick={handleUnschedulePings}>
           Unschedule (pinging every {scheduledInterval?.label ?? "?"})
         </button>
       )}

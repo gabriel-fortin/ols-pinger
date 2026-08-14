@@ -10,9 +10,9 @@ function App() {
   const [selectedUrlId, setSelectedUrlId] = useState<Id<"urls"> | undefined>(undefined)
 
   return (
-    <div>
+    <div className="p-4">
       {/* top panel */}
-      <div style={{ display: "flex", gap: "2em" }}>
+      <div className="mb-6 flex flex-wrap items-end gap-8">
         <AddUrlForm />
         <UrlSelector
           selectedUrlId={selectedUrlId}

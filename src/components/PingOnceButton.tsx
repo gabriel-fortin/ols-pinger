@@ -15,7 +15,7 @@ function PingOnceButton({ selectedUrlId }: PingOnceButtonProps) {
   }
 
   return (
-    <button type="button" onClick={handlePingOnce}>
+    <button type="button" className="btn" onClick={handlePingOnce}>
       Ping once
     </button>
   )

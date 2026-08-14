@@ -20,53 +20,11 @@ function SlotVisualisation({
   pageForward,
 }: SlotVisualisationProps) {
   return (
-    <div className="agg-chart-scroll">
-      <style>{`
-        .agg-chart-scroll {
-          overflow-x: auto;
-          max-width: 100%;
-        }
-        .agg-chart {
-          display: flex;
-          align-items: flex-end;
-          gap: 2px;
-          height: ${CHART_HEIGHT}px;
-          width: 100%;
-          border-bottom: 1px solid var(--baseline);
-          margin-bottom: 0.7em;
-          padding-top:1em;
-        }
-        .agg-bar-col {
-          position: relative;
-          flex: 1 1 0;
-          min-width: 3px;
-          height: 100%;
-          display: flex;
-          align-items: flex-end;
-        }
-          .agg-bar-col:has(.ott):after {
-            content: '⚠️';
-            position: absolute;
-            top:-1em;
-            left:50%;
-            transform: translateX(-50%);
-          }
-        .agg-bar {
-          width: 100%;
-          border-radius: 6px 6px 0 0;
-        }
-        .agg-bar-empty {
-          height: 3px;
-          background: var(--bar-empty);
-        }
-        .agg-whisker {
-          position: absolute;
-          left: calc(50% - 1px);
-          width: 2px;
-          background: var(--whisker);
-        }
-      `}</style>
-      <div className="agg-chart">
+    <div className="max-w-full overflow-x-auto">
+      <div
+        className="mb-3 flex w-full items-end gap-0.5 border-b border-base-300 pt-4"
+        style={{ height: `${CHART_HEIGHT}px` }}
+      >
         <BackButton canPageBack={canPageBack} pageBack={pageBack} />
         <Chart chartSlots={slots} />
         <ForwardButton canPageForward={canPageForward} pageForward={pageForward} />
@@ -90,8 +48,8 @@ function Chart({ chartSlots }: {
 
 function EmptyBar(time: string) {
   return (
-    <div key={time} className="agg-bar-col" title={`${time} — no pings`}>
-      <div className="agg-bar agg-bar-empty" />
+    <div key={time} className="relative flex h-full min-w-[3px] flex-1 items-end" title={`${time} — no pings`}>
+      <div className="h-[3px] w-full rounded-t-md bg-neutral" />
     </div>
   )
 }
@@ -110,7 +68,7 @@ function NormalBar(time: string, maxDuration: number, bucket: Doc<"aggregationBu
   return (
     <div
       key={time}
-      className="agg-bar-col"
+      className="relative flex h-full min-w-[3px] flex-1 items-end"
       title={
         `${time}` +
         ` — ${bucket.status}` +
@@ -118,19 +76,21 @@ function NormalBar(time: string, maxDuration: number, bucket: Doc<"aggregationBu
         ` — ${bucket.pingCount} pings`
       }
     >
+      {exceedsScale && (
+        <span className="absolute -top-4 left-1/2 -translate-x-1/2">⚠️</span>
+      )}
+      {/* whisker */}
       <div
-        className="agg-whisker"
+        className="absolute left-1/2 w-0.5 -translate-x-1/2 bg-base-content/50"
         style={{
           bottom: `${minHeight}px`,
           height: `${Math.max(maxHeight - minHeight, 1)}px`,
         }}
       />
+      {/* bar */}
       <div
-        className={`agg-bar ${exceedsScale && "ott"}`}
-        style={{
-          height: `${avgHeight}px`,
-          background: barColor(bucket.status),
-        }}
+        className={`w-full rounded-t-md ${barColor(bucket.status)}`}
+        style={{ height: `${avgHeight}px` }}
       />
     </div>
   )
@@ -141,8 +101,13 @@ function BackButton({ canPageBack, pageBack }: {
   pageBack: () => void,
 }): ReactElement {
   return (
-    <button type="button" onClick={pageBack} disabled={!canPageBack} title="Earlier"
-      style={{ marginRight: "1em" }}>
+    <button
+      type="button"
+      className="btn btn-sm mr-4"
+      onClick={pageBack}
+      disabled={!canPageBack}
+      title="Earlier"
+    >
       ◀
     </button>
   )
@@ -153,8 +118,13 @@ function ForwardButton({ canPageForward, pageForward }: {
   pageForward: () => void,
 }): ReactElement {
   return (
-    <button type="button" onClick={pageForward} disabled={!canPageForward} title="Later"
-      style={{ marginLeft: "1em" }}>
+    <button
+      type="button"
+      className="btn btn-sm ml-4"
+      onClick={pageForward}
+      disabled={!canPageForward}
+      title="Later"
+    >
       {canPageForward ? "▶" : "live"}
     </button>
   )
@@ -163,13 +133,13 @@ function ForwardButton({ canPageForward, pageForward }: {
 function barColor(status: "success" | "failure" | "mix" | "empty"): string {
   switch (status) {
     case "success":
-      return "var(--bar-good)"
+      return "bg-success"
     case "failure":
-      return "var(--bar-critical)"
+      return "bg-error"
     case "empty":
-      return "var(--bar-empty)"
+      return "bg-neutral"
     default:
-      return "var(--bar-mix)"
+      return "bg-warning"
   }
 }
 

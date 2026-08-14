@@ -8,11 +8,13 @@ interface SlotSizeControlsProps {
 
 function SlotSizeControls({ sets, selectedSetId, selectSet }: SlotSizeControlsProps) {
   return (
-    <>
-      <span style={{ marginRight: "0.5em" }}>
-        Each bar represents:
-      </span>
-      <select value={selectedSetId ?? ""} onChange={(e) => selectSet(e.target.value)}>
+    <div className="mb-2 flex items-center gap-2">
+      <span>Each bar represents:</span>
+      <select
+        className="select select-bordered select-sm"
+        value={selectedSetId ?? ""}
+        onChange={(e) => selectSet(e.target.value)}
+      >
         <option value="" disabled>
           Aggregation
         </option>
@@ -22,7 +24,7 @@ function SlotSizeControls({ sets, selectedSetId, selectSet }: SlotSizeControlsPr
           </option>
         ))}
       </select>
-    </>
+    </div>
   )
 }
 

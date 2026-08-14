@@ -6,13 +6,7 @@ function RangeAnnotation({ range }: RangeAnnotationProps) {
   if (!range) return null
 
   return (
-    <div className="agg-range">
-      <style>{`
-        .agg-range {
-          font-size: 0.75em;
-          color: var(--muted);
-        }
-      `}</style>
+    <div className="text-xs text-base-content/60">
       <span>Displayed range: &nbsp;</span>
       {new Date(range.from).toLocaleString("en-GB")}
       {" → "}
