@@ -90,7 +90,7 @@ function Chart({ chartSlots }: {
 
 function EmptyBar(time: string) {
   return (
-    <div className="agg-bar-col" title={`${time} — no pings`}>
+    <div key={time} className="agg-bar-col" title={`${time} — no pings`}>
       <div className="agg-bar agg-bar-empty" />
     </div>
   )
@@ -109,6 +109,7 @@ function NormalBar(time: string, maxDuration: number, bucket: Doc<"aggregationBu
 
   return (
     <div
+      key={time}
       className="agg-bar-col"
       title={
         `${time}` +
