@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useAction, useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
+import ChevronDownIcon from "./ChevronDownIcon"
 
 interface ScheduleControlsProps {
   selectedUrlId?: Id<"urls">
@@ -30,28 +31,33 @@ function ScheduleControls({ selectedUrlId }: ScheduleControlsProps) {
     unscheduleUrlPinging({ urlId: selectedUrlId })
   }
 
+  const handleSelectInterval = (intervalId: Id<"scheduleIntervals">) => {
+    setSelectedIntervalId(intervalId)
+    ;(document.activeElement as HTMLElement | null)?.blur()
+  }
+
+  const selectedInterval = intervals.find((i) => i._id === selectedIntervalId)
+
   return (
     <div className="flex items-center gap-2">
       {!scheduleExists && (
         <>
-          <select
-            className="select select-bordered"
-            value={selectedIntervalId ?? ""}
-            onChange={(e) =>
-              setSelectedIntervalId(
-                e.target.value ? (e.target.value as Id<"scheduleIntervals">) : undefined,
-              )
-            }
-          >
-            <option value="" disabled>
-              Interval
-            </option>
-            {intervals.map((i) => (
-              <option key={i._id} value={i._id}>
-                {i.label}
-              </option>
-            ))}
-          </select>
+          <div className="dropdown">
+            <div tabIndex={0} role="button" className="btn">
+              {selectedInterval ? selectedInterval.label : "Interval"}
+              <ChevronDownIcon />
+            </div>
+            <ul
+              tabIndex={0}
+              className="dropdown-content menu bg-base-300 rounded-box p-2 shadow-sm"
+            >
+              {intervals.map((i) => (
+                <li key={i._id}>
+                  <a onClick={() => handleSelectInterval(i._id)}>{i.label}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
           <button
             type="button"
             className="btn btn-primary"
