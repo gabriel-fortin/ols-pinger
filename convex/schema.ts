@@ -12,6 +12,7 @@ export default defineSchema({
 
   urls: defineTable({
     url: v.string(),
+    description: v.optional(v.string()),
   })
     .index("by_url", ["url"]),
 
