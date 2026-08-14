@@ -8,6 +8,8 @@
     "dev:convex": "convex dev",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "review": "echo '\n==> oxlint\n' && oxlint && echo '\n==> tsc -b\n' && tsc -b && echo '\n==> vite build\n' && vite build",
+    "deploy": "yarn review && echo '\n==> push to master\n' && git push origin HEAD:master",
     "preview": "vite preview"
   },
   "dependencies": {
