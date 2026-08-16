@@ -20,7 +20,7 @@ export function useAggregationChart(selectedUrlId: Id<"urls"> | undefined) {
   const lastSelectedUrl = useRef<string>(undefined)
 
   const sets = useQuery(api.aggregations.listSets,) ?? []
-  /* first and last bucket */
+  /* oldest and latest buckets */
   const bounds = useQuery(
     api.aggregations.bucketBounds,
     (selectedSetId && selectedUrlId)

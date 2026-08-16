@@ -29,21 +29,21 @@ export function useStableBuckets(
   slotMs: number,
 ): Doc<"aggregationBuckets">[] {
   const cacheData = useRef<Cache | undefined>(undefined)
-  
+
   const cached = cacheData.current
-  const cacheBoundary = page ? page.to - 2 * slotMs : Infinity
+  const cacheToFreshBoundary = page ? page.to - 2 * slotMs : NaN
 
   const canOptimise = !!(cached && page
     && cached.setId === setId && cached.urlId === urlId
     && page.from >= cached.from
-    && cacheBoundary <= cached.to)
+    && cacheToFreshBoundary <= cached.to)
 
-  const queryFrom = canOptimise ? cacheBoundary : page?.from
+  const queryFrom = canOptimise ? cacheToFreshBoundary : page?.from
   const query = (setId && urlId && page && queryFrom)
     ? { setId, urlId, from: queryFrom, to: page.to }
     : "skip"
   const fresh = useQuery(api.aggregations.listBuckets, query) ?? []
-  
+
   // late guard because of rule of hooks
   if (!setId || !urlId || !page) return []
 
