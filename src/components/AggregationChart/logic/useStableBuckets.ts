@@ -51,7 +51,10 @@ export function useStableBuckets(
     ? [...cached.buckets.filter((b) => b.sliceStart >= page.from && b.sliceStart < queryFrom!), ...fresh]
     : fresh
 
-  cacheData.current = { setId, urlId, ...page, buckets }
+  // caching the empty placeholder would poison canOptimise on the next render
+  if (fresh.length > 0) {
+    cacheData.current = { setId, urlId, ...page, buckets }
+  }
 
   return buckets
 }
