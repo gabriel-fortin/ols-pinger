@@ -16,14 +16,23 @@ export const get = query({
 })
 
 export const add = mutation({
-  args: { url: v.string() },
-  handler: async (ctx, { url }) => {
-    const existing = await ctx.db
-      .query("urls")
-      .withIndex("by_url", (q) => q.eq("url", url))
-      .first()
-    if (existing) return existing._id
-    const urlId = await ctx.db.insert("urls", { url })
+  args: {
+    url: v.string(),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, { url, description }) => {
+    const urlId = await ctx.db.insert("urls", { url, description })
     return urlId
+  },
+})
+
+export const update = mutation({
+  args: {
+    urlId: v.id("urls"),
+    url: v.string(),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, { urlId, url, description }) => {
+    await ctx.db.patch("urls", urlId, { url, description })
   },
 })
