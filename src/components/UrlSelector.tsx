@@ -33,7 +33,7 @@ function UrlSelector({ selectedUrlId, onSelectedUrlIdChange }: UrlSelectorProps)
     <>
       <div className="dropdown">
         <div tabIndex={0} role="button" className="btn w-64 justify-between">
-          {selectedUrl ? selectedUrl.description || selectedUrl.url : "Choose a URL"}
+          {selectedUrl ? selectedUrl.description || selectedUrl.url : "Add or select a URL"}
           <ChevronDownIcon />
         </div>
         <div
